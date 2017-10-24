@@ -1,0 +1,87 @@
+{
+  "types": [{
+      "newTypeName": "AccountName",
+      "type": "Name"
+    },{
+      "newTypeName": "Move",
+      "type": "UInt8"
+    },{
+      "newTypeName": "Status",
+      "type": "UInt8"
+    }
+  ],
+  "structs": [{
+      "name": "game",
+      "base": "",
+      "fields": {
+        "foe": "AccountName",
+        "host": "AccountName",
+
+        "host_moves": "Moves",
+        "foe_moves": "Moves",
+
+        "round": "UInt8",
+        "status": "UInt8",
+        "host_deposit": "UInt64",
+        "foe_deposit": "UInt64",
+      }
+    },{
+      "name": "Moves",
+      "base": "",
+      "fields": {
+        "moves": "UInt8[]",
+        "nonces": "UInt32[]",
+        "hashed_nonces": "UInt256[]",
+        "hashed_values": "UInt256[]",
+        "submit_turn": "UInt8",
+        "reveal_turn": "UInt8"
+      }
+    },{
+      "name": "create",
+      "base": "",
+      "fields": {
+        "host": "AccountName",
+        "foe": "AccountName"
+      }
+    },{
+      "name": "submit",
+      "base": "",
+      "fields": {
+        "host": "AccountName",
+        "foe": "AccountName",
+        "by": "AccountName",
+        "hashed_value": "UInt256",
+        "hashed_nonce": "UInt256"
+      }
+    },{
+      "name": "reveal",
+      "base": "",
+      "fields": {
+        "host": "AccountName",
+        "foe": "AccountName",
+        "by": "AccountName",
+        "move": "Move",
+        "nonce": "UInt32"
+      }
+    }
+  ],
+  "actions": [{
+      "action": "create",
+      "type": "create"
+    },{
+      "action": "submit",
+      "type": "submit"
+    },{
+      "action": "reveal",
+      "type": "reveal"
+    }
+  ],
+  "tables": [{
+      "table": "games",
+      "type": "game",
+      "indextype": "i64",
+      "keynames" : ["foe"],
+      "keytypes" : ["AccountName"]
+    }
+  ]
+}
