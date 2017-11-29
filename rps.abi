@@ -29,10 +29,10 @@
       "name": "Moves",
       "base": "",
       "fields": {
-        "moves": "UInt8[]",
-        "nonces": "UInt32[]",
-        "hashed_nonces": "UInt256[]",
-        "hashed_values": "UInt256[]",
+        "moves": "String[]",
+        "nonces": "String[]",
+        "hashed_nonces": "Checksum[]",
+        "hashed_values": "Checksum[]",
         "submit_turn": "UInt8",
         "reveal_turn": "UInt8"
       }
@@ -50,8 +50,8 @@
         "host": "AccountName",
         "foe": "AccountName",
         "by": "AccountName",
-        "hashed_value": "UInt256",
-        "hashed_nonce": "UInt256"
+        "hashed_value": "Checksum",
+        "hashed_nonce": "Checksum"
       }
     },{
       "name": "reveal",
@@ -60,8 +60,8 @@
         "host": "AccountName",
         "foe": "AccountName",
         "by": "AccountName",
-        "move": "Move",
-        "nonce": "UInt32"
+        "move": "String",
+        "nonce": "String"
       }
     }
   ],
