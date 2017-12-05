@@ -11,83 +11,58 @@
 #include <eoslib/raw.hpp>
 
 
+using namespace eosio;
 namespace rps {
-  enum class Move: uint8_t {
-    none = 0,
-    rock = 1,
-    paper = 2,
-    scissor = 3
-  };
+  
+  const static uint64_t contract_name = N(rps);
 
-  enum class Status: uint8_t {
-    none = 0,
-    host_win = 1,
-    foe_win = 2,
-    draw = 3
-  };
+  struct PACKED(moves) {
+    uint8_t moves_val_len = 3;
+    string moves_val[3]; 
 
-  struct PACKED(Moves) {
-    Moves() {
+    uint8_t nonces_len = 3;
+    string nonces[3];
 
-    }
-    uint8_t         moves_len = 3;
-    eos::string		    moves[3]; 
+    uint8_t hashed_moves_len = 3;
+    checksum hashed_moves[3]; 
 
-    uint8_t         nonces_len = 3;
-    eos::string	    nonces[3];
-
-    uint8_t         hashed_nonces_len = 3;
-    Checksum		   hashed_nonces[3]; 
-
-    uint8_t         hashed_values_len = 3;
-    Checksum	    hashed_values[3];
-
-    uint8_t         submit_turn;
-    uint8_t         reveal_turn;
+    uint8_t submit_turn;
+    uint8_t reveal_turn;
 
     const uint32_t get_pack_size() const {
       uint32_t size = 0;
-      size += sizeof(moves_len);
-      for (int i = 0; i < moves_len; i++) {
-        size += moves[i].get_size() + sizeof(moves[i].get_size());
+      size += sizeof(moves_val_len);
+      for (int i = 0; i < moves_val_len; i++) {
+        size += moves_val[i].get_size() + sizeof(moves_val[i].get_size());
       }
       size += sizeof(nonces_len);
       for (int i = 0; i < nonces_len; i++) {
         size += nonces[i].get_size() + sizeof(nonces[i].get_size());
       }
-      size += sizeof(hashed_nonces_len);
-      for (int i = 0; i < hashed_nonces_len; i++) {
-        size += sizeof(hashed_nonces[i]);
-      }
-      size += sizeof(hashed_values_len);
-      for (int i = 0; i < hashed_values_len; i++) {
-        size += sizeof(hashed_values[i]);
+      size += sizeof(hashed_moves_len);
+      for (int i = 0; i < hashed_moves_len; i++) {
+        size += sizeof(hashed_moves[i]);
       }
       size += sizeof(submit_turn);
       size += sizeof(reveal_turn);
       return size;
     }
-
-
   };
 
-  struct PACKED(Game) {
-    Game() {
+  struct PACKED(game) {
+    game() {
     };
-    Game(AccountName foe, AccountName host):foe(foe), host(host) {
+    game(uint64_t id, account_name foe, account_name host):id(id), foe(foe), host(host) {
     };
-
-    AccountName		  foe;
-    AccountName		  host;
-
-    Moves           host_moves;
-    Moves           foe_moves;
-
-    uint8_t 		    round; // 0, 1, 2
-
-    uint8_t 		      status; // win, lose, draw, none
-    uint64_t		    host_deposit;
-    uint64_t		    foe_deposit;
+    uint64_t id;
+    account_name foe;
+    account_name host;
+    moves host_moves;
+    moves foe_moves;
+    uint8_t round; // 0, 1, 2
+    account_name winner; // none, draw, foe account name, host account name
+    uint64_t host_deposit;
+    uint64_t foe_deposit;
     
     const uint32_t get_pack_size() const {
       uint32_t size=0;
@@ -96,176 +71,141 @@ namespace rps {
       size += host_moves.get_pack_size();
       size += foe_moves.get_pack_size();
       size += sizeof(round);
-      size += sizeof(status);
+      size += sizeof(winner);
       size += sizeof(host_deposit);
       size += sizeof(foe_deposit);
       return size;
     }
-
   };
 
-  struct PACKED(Create) {
-    AccountName host;
-    AccountName foe;
+  struct PACKED(create) {
+    account_name host;
+    account_name foe;
   };
 
-  struct PACKED(Submit) {
-    AccountName host;
-    AccountName foe;
-    AccountName by;
-    Checksum   hashed_value;
-    Checksum   hashed_nonce;
+  struct PACKED(submit) {
+    uint64_t game_id;
+    account_name by;
+    checksum   hashed_move;
   };
 
-  struct PACKED(Reveal) {
-    AccountName host;
-    AccountName foe;
-    AccountName by;
-    eos::string     move;
-    eos::string    nonce;
+  struct PACKED(reveal) {
+    uint64_t game_id;
+    account_name by;
+    string move_val;
+    string nonce;
   };
 
-  /**
-   * @brief Table to store list of games
-   */ 
-  using Games = Table<N(rps),N(rps),N(games),Game,uint64_t>;
-
-  
+  using Games = table<contract_name,contract_name,N(games),game,uint64_t>;
 }
 
-namespace eos {
+namespace eosio {
   template<>
-  rps::Reveal currentMessage<rps::Reveal>() {
-     uint32_t msgsize = messageSize();
-     char* buffer = (char *)eos::malloc(msgsize);
-     assert(readMessage(buffer, msgsize) == msgsize, "error reading Reveal");
+  rps::reveal current_message<rps::reveal>() {
+     uint32_t msgsize = message_size();
+     char* buffer = (char *)eosio::malloc(msgsize);
+     assert(read_message(buffer, msgsize) == msgsize, "error reading reveal");
      datastream<char *> ds(buffer, msgsize);
-     rps::Reveal value;
-     raw::unpack(ds, value.host);
-     raw::unpack(ds, value.foe);
+     rps::reveal value;
+     raw::unpack(ds, value.game_id);
      raw::unpack(ds, value.by);
-     raw::unpack(ds, value.move);
+     raw::unpack(ds, value.move_val);
      raw::unpack(ds, value.nonce);
-     eos::free(buffer);
+     eosio::free(buffer);
      return value;
   }
 
   namespace raw {
-    template<typename Stream> inline void pack( Stream& ds, const rps::Moves& moves) {
-      pack(ds, moves.moves_len);
-      for (int i = 0; i < moves.moves_len; i++) {
-        pack(ds, moves.moves[i]);
+    template<typename Stream> inline void pack( Stream& ds, const checksum& v ) {
+      for (int i = 0; i < 4; i++) {
+        pack(ds, v.hash[i]);
       }
-      pack(ds, moves.nonces_len);
-      for (int i = 0; i < moves.nonces_len; i++) {
-        pack(ds, moves.nonces[i]);
+    }
+
+    template<typename Stream> inline void unpack( Stream& ds, checksum& v)  {
+      for (int i = 0; i < 4; i++) {
+        unpack(ds, v.hash[i]);
       }
-      pack(ds, moves.hashed_nonces_len);
-      for (int i = 0; i < moves.hashed_nonces_len; i++) {
-        pack(ds, moves.hashed_nonces[i]);
+    }
+   
+    template<typename Stream> inline void pack( Stream& ds, const rps::moves& moves_val) {
+      pack(ds, moves_val.moves_val_len);
+      for (int i = 0; i < moves_val.moves_val_len; i++) {
+        pack(ds, moves_val.moves_val[i]);
       }
-      pack(ds, moves.hashed_values_len);
-      for (int i = 0; i < 3; i++) {
-        pack(ds, moves.hashed_values[i]);
+      pack(ds, moves_val.nonces_len);
+      for (int i = 0; i < moves_val.nonces_len; i++) {
+        pack(ds, moves_val.nonces[i]);
       }
-      pack(ds, moves.submit_turn);
-      pack(ds, moves.reveal_turn);     
+      pack(ds, moves_val.hashed_moves_len);
+      for (int i = 0; i < moves_val.hashed_moves_len; i++) {
+        pack(ds, moves_val.hashed_moves[i]);
+      }
+      pack(ds, moves_val.submit_turn);
+      pack(ds, moves_val.reveal_turn);     
     }
     
-    template<typename Stream> inline void pack( Stream& ds, const rps::Game& game) {
-      pack(ds, game.foe);
-      pack(ds, game.host);
-      pack(ds, game.host_moves);
-      pack(ds, game.foe_moves);
-      pack(ds, game.round);
-      pack(ds, game.status);
-      pack(ds, game.host_deposit);
-      pack(ds, game.foe_deposit);
+    template<typename Stream> inline void pack( Stream& ds, const rps::game& g) {
+      pack(ds, g.id);
+      pack(ds, g.foe);
+      pack(ds, g.host);
+      pack(ds, g.host_moves);
+      pack(ds, g.foe_moves);
+      pack(ds, g.round);
+      pack(ds, g.winner);
+      pack(ds, g.host_deposit);
+      pack(ds, g.foe_deposit);
     }
 
-    template<typename Stream> inline void unpack( Stream& ds, rps::Moves& moves) {
-      unpack(ds, moves.moves_len);
-      eos::print("unpack moves\n");
-      for (int i = 0; i < moves.moves_len; i++) {
-        eos::print("datastream\n");
-        prints_l(ds.pos(), 10);
-        eos::print("\n");
-        eos::print(ds.tellp());
-        eos::print("\n");
-        eos::print(ds.remaining());
-        eos::print("\n");
-        unpack(ds, moves.moves[i]);
+    template<typename Stream> inline void unpack( Stream& ds, rps::moves& moves_val) {
+      unpack(ds, moves_val.moves_val_len);
+      for (int i = 0; i < moves_val.moves_val_len; i++) {
+        unpack(ds, moves_val.moves_val[i]);
       }
-      eos::print("moves len unpacked\n");
-      eos::print((uint32_t)moves.moves_len);
-      eos::print("\n");
-      eos::print(moves.moves[0]);
-      eos::print("\n");
-      eos::print(moves.moves[1]);
-      eos::print("\n");
-      // eos::print("datastream\n");
-      // prints_l(ds.pos(), 100);
-      // eos::print("\n");
-      // eos::print(ds.tellp());
-      // eos::print("\n");
-      // eos::print(ds.remaining());
-      // eos::print("\n");
-      eos::print(moves.moves[2]);
-      eos::print("\n");
-
-      // unpack(ds, moves.nonces_len);
-      // for (int i = 0; i < moves.nonces_len; i++) {
-      //   unpack(ds, moves.nonces[i]);
-      // }
-      // unpack(ds, moves.hashed_nonces_len);
-      // for (int i = 0; i < moves.hashed_nonces_len; i++) {
-      //   unpack(ds, moves.hashed_nonces[i]);
-      // }
-      // unpack(ds, moves.hashed_values_len);
-      // for (int i = 0; i < moves.hashed_values_len; i++) {
-      //   unpack(ds, moves.hashed_values[i]);
-      // }
-      // unpack(ds, moves.submit_turn);
-      // unpack(ds, moves.reveal_turn);  
+      unpack(ds, moves_val.nonces_len);
+      for (int i = 0; i < moves_val.nonces_len; i++) {
+        unpack(ds, moves_val.nonces[i]);
+      }
+      unpack(ds, moves_val.hashed_moves_len);
+      for (int i = 0; i < moves_val.hashed_moves_len; i++) {
+        unpack(ds, moves_val.hashed_moves[i]);
+      }
+      unpack(ds, moves_val.submit_turn);
+      unpack(ds, moves_val.reveal_turn);  
     }
 
-    template<typename Stream> inline void unpack( Stream& ds, rps::Game& game) {
-      eos::print("unoacking game");
-      unpack(ds, game.foe);
-      unpack(ds, game.host);
-      unpack(ds, game.host_moves);
-      unpack(ds, game.foe_moves);
-      unpack(ds, game.round);
-      unpack(ds, game.status);
-      unpack(ds, game.host_deposit);
-      unpack(ds, game.foe_deposit);
+    template<typename Stream> inline void unpack( Stream& ds, rps::game& g) {
+      unpack(ds, g.id);
+      unpack(ds, g.foe);
+      unpack(ds, g.host);
+      unpack(ds, g.host_moves);
+      unpack(ds, g.foe_moves);
+      unpack(ds, g.round);
+      unpack(ds, g.winner);
+      unpack(ds, g.host_deposit);
+      unpack(ds, g.foe_deposit);
     }
   }
 
  
-  Bytes valueToBytes(const rps::Game& game) {
-
-    uint32_t max_size = game.get_pack_size();
-   
-    char* buffer = (char *)eos::malloc(max_size);
+  bytes value_to_bytes(const rps::game& g) {
+    uint32_t max_size = g.get_pack_size();
+    char* buffer = (char *)eosio::malloc(max_size);
     datastream<char *> ds(buffer, max_size);     
-
-    raw::pack(ds, game);
-    
-    Bytes bytes;
-    bytes.len = ds.tellp();
-    bytes.data = (uint8_t*)buffer;
-
-    return bytes;
+    raw::pack(ds, g);
+    bytes b;
+    b.len = ds.tellp();
+    b.data = (uint8_t*)buffer;
+    return b;
  }
 
  template<typename T>
- T bytesToValue(const Bytes& bytes) { return *reinterpret_cast<T*>(bytes.data); }
+ T bytes_to_value(const bytes& b) { return *reinterpret_cast<T*>(b.data); }
 
  template<>
- rps::Game bytesToValue<rps::Game>(const Bytes& bytes) {
-    datastream<char *> ds((char*)bytes.data, bytes.len);
-    rps::Game value;
+ rps::game bytes_to_value<rps::game>(const bytes& b) {
+    datastream<char *> ds((char*)b.data, b.len);
+    rps::game value;
     raw::unpack(ds, value);
     return value;
  }

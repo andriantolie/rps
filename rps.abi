@@ -1,87 +1,72 @@
 {
-  "types": [{
-      "newTypeName": "AccountName",
-      "type": "Name"
-    },{
-      "newTypeName": "Move",
-      "type": "UInt8"
-    },{
-      "newTypeName": "Status",
-      "type": "UInt8"
-    }
-  ],
+  "types": [],
   "structs": [{
       "name": "game",
       "base": "",
       "fields": {
-        "foe": "AccountName",
-        "host": "AccountName",
-
-        "host_moves": "Moves",
-        "foe_moves": "Moves",
-
-        "round": "UInt8",
-        "status": "UInt8",
-        "host_deposit": "UInt64",
-        "foe_deposit": "UInt64",
+        "id": "uint64",
+        "foe": "account_name",
+        "host": "account_name",
+        "host_moves": "moves",
+        "foe_moves": "moves",
+        "round": "uint8",
+        "winner": "account_name",
+        "host_deposit": "uint64",
+        "foe_deposit": "uint64",
       }
     },{
-      "name": "Moves",
+      "name": "moves",
       "base": "",
       "fields": {
-        "moves": "String[]",
-        "nonces": "String[]",
-        "hashed_nonces": "Checksum[]",
-        "hashed_values": "Checksum[]",
-        "submit_turn": "UInt8",
-        "reveal_turn": "UInt8"
+        "moves_val": "string[]",
+        "nonces": "string[]",
+        "hashed_moves": "checksum[]",
+        "submit_turn": "uint8",
+        "reveal_turn": "uint8"
       }
     },{
       "name": "create",
       "base": "",
       "fields": {
-        "host": "AccountName",
-        "foe": "AccountName"
+        "host": "account_name",
+        "foe": "account_name"
       }
     },{
       "name": "submit",
       "base": "",
       "fields": {
-        "host": "AccountName",
-        "foe": "AccountName",
-        "by": "AccountName",
-        "hashed_value": "Checksum",
-        "hashed_nonce": "Checksum"
+        "game_id": "uint64",
+        "by": "account_name",
+        "hashed_move": "checksum"
       }
     },{
       "name": "reveal",
       "base": "",
       "fields": {
-        "host": "AccountName",
-        "foe": "AccountName",
-        "by": "AccountName",
-        "move": "String",
-        "nonce": "String"
+        "game_id": "uint64",
+        "by": "account_name",
+        "move": "string",
+        "nonce": "string"
       }
     }
   ],
   "actions": [{
-      "action": "create",
+      "action_name": "create",
       "type": "create"
     },{
-      "action": "submit",
+      "action_name": "submit",
       "type": "submit"
     },{
-      "action": "reveal",
+      "action_name": "reveal",
       "type": "reveal"
     }
   ],
   "tables": [{
-      "table": "games",
+      "table_name": "games",
       "type": "game",
-      "indextype": "i64",
-      "keynames" : ["foe"],
-      "keytypes" : ["AccountName"]
+      "index_type": "i64",
+      "key_names" : ["id"],
+      "key_types" : ["uint64"]
     }
   ]
 }
