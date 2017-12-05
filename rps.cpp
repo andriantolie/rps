@@ -55,29 +55,27 @@ namespace rps {
         return 0;
     }
 
+    score calculate_score(const string& host_move, const string& foe_move) {
+        score game_score;
+        if ((host_move == "rock" && foe_move == "scissor") || 
+            (host_move == "scissor" && foe_move == "paper")  || 
+            (host_move == "paper" && foe_move == "rock")) {
+            game_score.host++; 
+        } else if ((host_move == "rock" && foe_move == "paper") || 
+                    (host_move == "scissor" && foe_move == "rock")  || 
+                    (host_move == "paper" && foe_move == "scissor")) {
+                    game_score.foe++; 
+        }
+        return game_score;
+    }
+
     account_name get_winner(game& g) {
         if (g.round < 3) {
             return N(none);
         } else {
-            uint32_t foe_score = 0;
-            uint32_t host_score = 0;
-            for (int i = 0; i < 3; i++) {
-                string host_move((char *)g.host_moves.moves_val[i].get_data(), g.host_moves.moves_val[i].get_size(), false);
-                string foe_move((char *)g.foe_moves.moves_val[i].get_data(), g.foe_moves.moves_val[i].get_size(), false);
-
-                if ((host_move == "rock" && foe_move == "scissor") || 
-                    (host_move == "scissor" && foe_move == "paper")  || 
-                    (host_move == "paper" && foe_move == "rock")) {
-                    host_score++; 
-                } else if ((host_move == "rock" && foe_move == "paper") || 
-                          (host_move == "scissor" && foe_move == "rock")  || 
-                          (host_move == "paper" && foe_move == "scissor")) {
-                          foe_score++;
-                }
-            }
-            if (host_score > foe_score) {
+            if (g.game_score.host > g.game_score.foe) {
                 return g.host;
-            } else if (foe_score > host_score) {
+            } else if (g.game_score.foe > g.game_score.host) {
                 return g.foe;
             } else {
                 return N(draw);
@@ -142,11 +140,13 @@ namespace rps {
         moves_pointer->nonces[g.round] = r.nonce; 
         moves_pointer->reveal_turn++;
 
-        if (g.host_moves.reveal_turn > g.round && g.foe_moves.reveal_turn > g.round) g.round++;
+        if (g.host_moves.reveal_turn > g.round && g.foe_moves.reveal_turn > g.round){
+            g.game_score += calculate_score(g.host_moves.moves_val[g.round], g.foe_moves.moves_val[g.round]);
+            g.round++;
+        }
 
         // Update winner
-        account_name winner = get_winner(g);
-        g.winner = winner;
+        g.winner = get_winner(g);
 
         // Update the data
         update_game(g);

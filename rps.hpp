@@ -16,6 +16,16 @@ namespace rps {
   
   const static uint64_t contract_name = N(rps);
 
+  struct PACKED(score) {
+    uint8_t host;
+    uint8_t foe;
+    score& operator += (const score& s){
+      host += s.host;
+      foe += s.foe;
+      return *this;
+    }
+  };
+
   struct PACKED(moves) {
     uint8_t moves_val_len = 3;
     string moves_val[3]; 
@@ -61,8 +71,10 @@ namespace rps {
     moves foe_moves;
     uint8_t round; // 0, 1, 2
     account_name winner; // none, draw, foe account name, host account name
+    score game_score;
     uint64_t host_deposit;
     uint64_t foe_deposit;
+    
     
     const uint32_t get_pack_size() const {
       uint32_t size=0;
@@ -145,6 +157,11 @@ namespace eosio {
       pack(ds, moves_val.reveal_turn);     
     }
     
+    template<typename Stream> inline void pack( Stream& ds, const rps::score& s) {
+      pack(ds, s.host);
+      pack(ds, s.foe);
+    }
+
     template<typename Stream> inline void pack( Stream& ds, const rps::game& g) {
       pack(ds, g.id);
       pack(ds, g.foe);
@@ -153,6 +170,7 @@ namespace eosio {
       pack(ds, g.foe_moves);
       pack(ds, g.round);
       pack(ds, g.winner);
+      pack(ds, g.game_score);
       pack(ds, g.host_deposit);
       pack(ds, g.foe_deposit);
     }
@@ -174,6 +192,10 @@ namespace eosio {
       unpack(ds, moves_val.reveal_turn);  
     }
 
+    template<typename Stream> inline void unpack( Stream& ds, rps::score& s) {
+      unpack(ds, s.host);
+      unpack(ds, s.foe);
+    }
     template<typename Stream> inline void unpack( Stream& ds, rps::game& g) {
       unpack(ds, g.id);
       unpack(ds, g.foe);
@@ -182,6 +204,7 @@ namespace eosio {
       unpack(ds, g.foe_moves);
       unpack(ds, g.round);
       unpack(ds, g.winner);
+      unpack(ds, g.game_score);
       unpack(ds, g.host_deposit);
       unpack(ds, g.foe_deposit);
     }

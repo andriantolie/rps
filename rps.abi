@@ -1,6 +1,13 @@
 {
   "types": [],
   "structs": [{
+      "name": "score",
+      "base": "",
+      "fields": {
+        "host": "uint8",
+        "foe": "uint8"
+      }
+    },{
       "name": "game",
       "base": "",
       "fields": {
@@ -11,6 +18,7 @@
         "foe_moves": "moves",
         "round": "uint8",
         "winner": "account_name",
+        "game_score": "score",
         "host_deposit": "uint64",
         "foe_deposit": "uint64",
       }
