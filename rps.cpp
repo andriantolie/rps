@@ -3,6 +3,9 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <rps.hpp>
+#include <rps_fwd.hpp>
+#include <eoslib/crypto.h>
+#include <eoslib/memory.hpp>
 
 using namespace eosio;
 namespace rps {
