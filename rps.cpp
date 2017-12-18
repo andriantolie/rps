@@ -73,16 +73,14 @@ namespace rps {
     }
 
     account_name get_winner(game& g) {
-        if (g.round < 3) {
-            return N(none);
+        if (g.game_score.host >= 2 ) {
+            return g.host;
+        } else if (g.game_score.foe >= 2) {
+            return g.foe;
+        } else if (g.round > 2 && g.game_score.host == g.game_score.foe) {
+            return N(draw);
         } else {
-            if (g.game_score.host > g.game_score.foe) {
-                return g.host;
-            } else if (g.game_score.foe > g.game_score.host) {
-                return g.foe;
-            } else {
-                return N(draw);
-            }
+            return N(none);
         }
     }
 
@@ -182,7 +180,7 @@ extern "C" {
             } else if (action_name == N(reveal)) {
                 apply_reveal(current_message<reveal>());
             }
-        }
+        } 
       
     }
 
