@@ -3,6 +3,29 @@
 #include <eoslib/eos.hpp>
 
 namespace eosio {
+
+  struct transfer {
+    account_name from;
+    account_name to;
+    uint64_t amount;
+    string memo;
+  };
+
+  template<>
+  transfer current_message<transfer>() {
+     uint32_t msgsize = message_size();
+     char* buffer = (char *)eosio::malloc(msgsize);
+     assert(read_message(buffer, msgsize) == msgsize, "error reading transfer");
+     datastream<char *> ds(buffer, msgsize);
+     transfer value;
+     raw::unpack(ds, value.from);
+     raw::unpack(ds, value.to);
+     raw::unpack(ds, value.amount);
+     raw::unpack(ds, value.memo);
+     eosio::free(buffer);
+     return value;
+  }
+
   template<>
   rps::reveal current_message<rps::reveal>() {
      uint32_t msgsize = message_size();
@@ -62,8 +85,10 @@ namespace eosio {
       pack(ds, g.round);
       pack(ds, g.winner);
       pack(ds, g.game_score);
-      pack(ds, g.host_deposit);
-      pack(ds, g.foe_deposit);
+      pack(ds, g.host_stake);
+      pack(ds, g.foe_stake);
+      pack(ds, g.created_time);
+      pack(ds, g.is_active);
     }
 
     template<typename Stream> inline void unpack( Stream& ds, rps::moves& moves_val) {
@@ -96,8 +121,10 @@ namespace eosio {
       unpack(ds, g.round);
       unpack(ds, g.winner);
       unpack(ds, g.game_score);
-      unpack(ds, g.host_deposit);
-      unpack(ds, g.foe_deposit);
+      unpack(ds, g.host_stake);
+      unpack(ds, g.foe_stake);
+      unpack(ds, g.created_time);
+      unpack(ds, g.is_active);
     }
   }
 

@@ -4,6 +4,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <eoslib/eos.hpp>
+#include <eoslib/system.h>
 #include <eoslib/db.hpp>
 #include <eoslib/string.hpp>
 
@@ -58,7 +59,8 @@ namespace rps {
   struct PACKED(game) {
     game() {
     };
-    game(uint64_t id, account_name foe, account_name host):id(id), foe(foe), host(host) {
+    game(uint64_t id, account_name foe, account_name host):id(id), foe(foe), host(host), winner(N(none)), is_active(0) {
+      created_time = now();
     };
     uint64_t id;
     account_name foe;
@@ -68,8 +70,10 @@ namespace rps {
     uint8_t round; // 0, 1, 2
     account_name winner; // none, draw, foe account name, host account name
     score game_score;
-    uint64_t host_deposit;
-    uint64_t foe_deposit;
+    uint64_t host_stake;
+    uint64_t foe_stake;
+    time created_time;
+    uint8_t is_active;
     
     
     const uint32_t get_pack_size() const {
@@ -80,8 +84,10 @@ namespace rps {
       size += foe_moves.get_pack_size();
       size += sizeof(round);
       size += sizeof(winner);
-      size += sizeof(host_deposit);
-      size += sizeof(foe_deposit);
+      size += sizeof(host_stake);
+      size += sizeof(foe_stake);
+      size += sizeof(created_time);
+      size += sizeof(is_active);
       return size;
     }
   };
@@ -89,6 +95,11 @@ namespace rps {
   struct PACKED(create) {
     account_name host;
     account_name foe;
+  };
+
+  struct PACKED(cancel) {
+    uint64_t game_id;
+    account_name by;
   };
 
   struct PACKED(submit) {
@@ -104,6 +115,29 @@ namespace rps {
     string nonce;
   };
 
+  struct PACKED(stake) {
+    uint64_t game_id;
+    uint64_t amount;
+    account_name by;
+  };
+  
+  struct PACKED(balance) {
+    balance():locked_amount(0), avail_amount(0) {
+
+    }
+    const uint64_t key = N(account); // constant key
+    uint64_t locked_amount;
+    uint64_t avail_amount;
+  };
+
+
+  struct PACKED(withdraw) {
+    account_name by;
+    uint64_t amount;
+  };
+
+  
   using Games = table<contract_name,contract_name,N(games),game,uint64_t>;
+  using Balance = table<contract_name,contract_name,N(balance),balance,uint64_t>;
 }
 

@@ -19,8 +19,10 @@
         "round": "uint8",
         "winner": "account_name",
         "game_score": "score",
-        "host_deposit": "uint64",
-        "foe_deposit": "uint64",
+        "host_stake": "uint64",
+        "foe_stake": "uint64",
+        "created_time": "time",
+        "is_active": "uint8"
       }
     },{
       "name": "moves",
@@ -56,6 +58,36 @@
         "move": "string",
         "nonce": "string"
       }
+    },{
+      "name": "cancel",
+      "base": "",
+      "fields": {
+        "game_id": "uint64",
+        "by": "account_name"
+      }
+    },{
+      "name": "stake",
+      "base": "",
+      "fields": {
+        "game_id": "uint64",
+        "amount": "uint64",
+        "by": "account_name"
+      }
+    },{
+      "name": "withdraw",
+      "base": "",
+      "fields": {
+        "by": "account_name",
+        "amount": "uint64"
+      }
+    },{
+      "name": "balance",
+      "base": "",
+      "fields": {
+        "key": "account_name",
+        "locked_amount": "uint64",
+        "avail_amount": "uint64"
+      }
     }
   ],
   "actions": [{
@@ -67,6 +99,15 @@
     },{
       "action_name": "reveal",
       "type": "reveal"
+    },{
+      "action_name": "cancel",
+      "type": "cancel"
+    },{
+      "action_name": "stake",
+      "type": "stake"
+    },{
+      "action_name": "withdraw",
+      "type": "withdraw"
     }
   ],
   "tables": [{
@@ -75,6 +116,12 @@
       "index_type": "i64",
       "key_names" : ["id"],
       "key_types" : ["uint64"]
+    }, {
+      "table_name": "balance",
+      "type": "balance",
+      "index_type": "i64",
+      "key_names" : ["key"],
+      "key_types" : ["account_name"]
     }
   ]
 }
