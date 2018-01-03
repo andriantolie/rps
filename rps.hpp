@@ -1,13 +1,57 @@
-#pragma once
 /**
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  * 
  * Example of Player vs Player Rock Paper Scissors Smart Contract
  * This example contract demonstrates:
- * - How two players can submit a move without being known by other player
- * - How to stake money on a game and rewards the winner with the total stake
+ * 1. How two players can submit a move without being known by other player
+ * 2. How to stake money on a game and rewards the winner with the total stake
+ * 
+ * Rules:
+ * - 1 game has 3 round
+ * - The first player who gets 2 win out of 3 round is the winner
+ * 
+ * In order for first player to be able to submit a move into a public blockchain
+ * without being known by other player, and when the move is revealed the other player is unable 
+ * to change his move, the game will follow the following flows:
+ * 1. Player 1 submits hash of his move + nonce (i.e. hash(rock213890123892))
+ * 2. At this point, the public information is just the hash of Player 1 move and not the move itself
+ * 3. Player 2 submits hash of his move + nonce (i.e. hash(scissor123947128193))
+ * 4. Player 1 reveals his move by submitting his move and nonce to the blockchain
+ * 5. The blockchain hashes the submitted move and nonce, if it matches with the previously submitted hash(move + nonce)
+ * then the submitted move is valid.
+ * 6. At this point, the move of Player 1 is known, however Player 2 won't be able to change his move
+ * because if he did, the hash of the new move and nonce will not match the previously submitted hash(move + nonce)
+ * 7. Player 2 reveals his move and nonce, and similarly the blockchain will compare it with the previously submitted hash(move + nonce)
+ * 8. Both player has revealed his move, the winner can be determined
+ * 
+ * In order for the player to be able to put stake on the game, the following flows is followed:
+ * 1. Player do eosio native transfer to rps contract
+ * 2. rps contract listens to any eosio native transfer sent to it, it will mark down how much money is deposited
+ * 3. When a game is created, player can put stake up to the amount of money it has deposited to rps contract,
+ * this money will be locked until the game winner is declared
+ * 4. When a game winner is declared, rps contract will mark that the staked money belongs to the winner and has the
+ * winner deposited amount increased
+ * 5. Winner can withdraw money by sending Withdraw action to rps contract. Internally, this will trigger eosio native
+ * transfer from rps contract to the withdrawer
+ * 
+ * Available Actions:
+ * - Create = Create New Game
+ * - Submit = Submit hashed move + nonce
+ * - Reveal = Reveal move and nonce
+ * - Stake = Put stake on a game
+ * - Withdraw = Withdraw deposited money
+ * 
+ * Available Tables:
+ * - Games = List of Games
+ * - Balance = Balance of deposited money for each account
+ * 
+ * To be improved:
+ * - Create deferred transaction to progress the game if a player hasn't made any move for the next 5 mins,
+ * this prevents the losing player to not submitting a move to the winning player to become the winner and claim the money
+ * - Handle integer overflow and underflow (to be done when the token api is updated)
  */
+#pragma once
 #include <eoslib/eos.hpp>
 #include <eoslib/system.h>
 #include <eoslib/db.hpp>
@@ -26,7 +70,7 @@ namespace rps {
     string moves_val[3]; 
 
     uint8_t nonces_len = 3;
-    string nonces[3];
+    string nonces[3]; // Any random string, the larger it is, the better
 
     uint8_t hashed_moves_len = 3;
     checksum hashed_moves[3]; 
