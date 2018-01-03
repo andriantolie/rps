@@ -1,3 +1,6 @@
+/*
+ * Overriding eosio pack and unpack function to support rps objects  
+ */
 #pragma once
 #include <eoslib/datastream.hpp>
 #include <eoslib/raw.hpp>
@@ -6,6 +9,9 @@
 
 namespace eosio {
 
+  /**
+   * eosio native transfer
+   */
   struct transfer {
     account_name from;
     account_name to;
@@ -13,6 +19,9 @@ namespace eosio {
     string memo;
   };
 
+  /*
+   * eosio native transfer message unpacking function
+   */
   template<>
   transfer current_message<transfer>() {
      uint32_t msgsize = message_size();
@@ -127,7 +136,6 @@ namespace eosio {
       unpack(ds, g.is_active);
     }
   }
-
  
   bytes value_to_bytes(const rps::game& g) {
     uint32_t max_size = g.get_pack_size();

@@ -1,4 +1,4 @@
-/**
+/*
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
@@ -11,7 +11,7 @@
 using namespace eosio;
 
 namespace rps {
-    /**
+    /*
      * Store game to database
      */
     int32_t store_game(const game& g) {
@@ -19,14 +19,14 @@ namespace rps {
         return store_i64(contract_name, N(games), b.data, b.len);
     }
 
-    /**
+    /*
      * Update game object in database
      */
      int32_t update_game(const game& g) {
         bytes b = value_to_bytes(g);
         return update_i64(N(rps), N(games), b.data, b.len);
     }
-    /**
+    /*
      * Load game from database
      */
     int32_t load_game(game& g, const uint64_t game_id) {
@@ -44,7 +44,7 @@ namespace rps {
         return num_b_read;
     }
 
-    /**
+    /*
      * Get next game id
      */
     uint64_t get_next_game_id() {
@@ -107,12 +107,11 @@ namespace rps {
         }
     }
 
-    /**
-     * @brief Distribute stake
-     * 
-     * @param g 
+    /*
+     * Distribute stake to the winner
      */
     void distribute_stake(game& g) {
+        // Fetch host and foe balance
         balance host_bal;
         Balance::get(host_bal, g.host);
         balance foe_bal;
@@ -134,6 +133,7 @@ namespace rps {
             foe_bal.locked_amount -= g.foe_stake;
             foe_bal.avail_amount += (g.host_stake + g.foe_stake);
         }
+        // Update foe and host balance
         Balance::update(host_bal, g.host);
         Balance::update(foe_bal, g.foe);
         // Reduce stakes in game
@@ -141,27 +141,24 @@ namespace rps {
         g.foe_stake = 0;
     }
 
-    /**
-     * @brief Apply create game action
-     * 
-     * @param c 
+    /*
+     * Apply create game action
      */
     void apply_create(const create& c) {
         require_auth(c.host);
+        // Create a new game and set it to active
         game g(get_next_game_id(), c.foe, c.host);
         g.is_active = 1;
         store_game(g);
     }
 
-    /**
-     * @brief Apply submit move action
-     * 
-     * @param s 
+    /*
+     * Apply submit move action
      */
     void apply_submit(const submit& s) {
         require_auth(s.by);
 
-        // Initialize empty object with the key
+        // Check if the game exists and is active
         game g;
         bool game_exists = load_game(g, s.game_id) != -1;
         assert(game_exists == true, "game doesn't exist!");
@@ -183,14 +180,13 @@ namespace rps {
         update_game(g);
     }   
 
-    /**
-     * @brief Apply reveal move action
-     * 
-     * @param r 
+    /*
+     * Apply reveal move action
      */
     void apply_reveal(const reveal& r) {
         require_auth(r.by);
 
+        // Check if the game exists and is active
         game g;
         bool game_exists = load_game(g, r.game_id) != -1;
         assert(game_exists == true, "game doesn't exist!");
@@ -210,6 +206,7 @@ namespace rps {
         string move_and_nonce = r.move_val + r.nonce;
         // Ensure it is the right move and nonce
         assert_sha256((char *)move_and_nonce.get_data(), move_and_nonce.get_size(), &moves_pointer->hashed_moves[g.round]);
+        // Update the information in the game object
         moves_pointer->moves_val[g.round] = r.move_val; 
         moves_pointer->nonces[g.round] = r.nonce; 
         moves_pointer->reveal_turn++;
@@ -228,7 +225,7 @@ namespace rps {
         if (is_winner_determined) {
             // Distribute stake if the winner is determined
             distribute_stake(g);
-            // Set is_active to 0
+            // Set game to be inactive
             g.is_active = 0;
         }
 
@@ -236,15 +233,14 @@ namespace rps {
         update_game(g);
     }
 
-    /**
-     * @brief Apply stake action
-     * 
-     * @param s 
+    /*
+     * Apply stake action
      */
     void apply_stake(const stake& s) { 
         // Check authorization
         require_auth(s.by);
 
+        // Check if the game exists and is active
         game g;
         bool game_exists = load_game(g, s.game_id) != -1;
         assert(game_exists == true, "game doesn't exist!");
@@ -273,10 +269,10 @@ namespace rps {
 
     }
 
-    /**
-     * @brief Message handler for native eos transfer
-     * 
-     * @param t 
+    /*
+     * Message handler for native eos transfer
+     * - If it is incoming transfer, add the balance for the sender
+     * - If it is outgoing transfer, deduct the balance from the receiver
      */
     void apply_eos_transfer(const transfer& t) {
         if (t.from == contract_name) {
@@ -294,6 +290,7 @@ namespace rps {
             bool balance_exists =  Balance::get(bal, t.from);
             bal.avail_amount += t.amount;
 
+            // Update balance if it exists otherwise create new one
             if (balance_exists) {
                 Balance::update(bal, t.from);
             } else {
@@ -303,6 +300,10 @@ namespace rps {
        
     }
 
+    /*
+     * Apply Withdraw Action
+     * This generates a native eosio transfer with auth from the code
+     */
     void apply_withdraw(const withdraw& w) {
         require_auth(w.by);
         // Initiate eos transfer from this contract to the withdrawer
@@ -314,7 +315,11 @@ namespace rps {
         msg.add_permissions(contract_name, N(code));
         msg.send();
     }
-
+    
+    /*
+     * Apply Cancel Game Action
+     * Only enable cancel game after the game has been running for at least 24 hours
+     */
     void apply_cancel(const cancel& c) {
         require_auth(c.by);
 
@@ -338,14 +343,14 @@ namespace rps {
 }
 
 
-/**
+/*
  *  The init() and apply() methods must have C calling convention so that the blockchain can lookup and
  *  call these methods.
  */
 extern "C" {
 
-    /**
-     *  This method is called once when the contract is published or updated.
+    /*
+     * This method is called once when the contract is published or updated.
      */
     void init()  {
     }

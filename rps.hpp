@@ -34,6 +34,9 @@ namespace rps {
     uint8_t submit_turn = 0;
     uint8_t reveal_turn = 0;
 
+    /*
+     * Calculate the size of this object to be used by pack function
+     */
     const uint32_t get_pack_size() const {
       uint32_t size = 0;
       size += sizeof(moves_val_len);
@@ -80,7 +83,9 @@ namespace rps {
     time created_time;
     uint8_t is_active = 0;
     
-    
+    /*
+     * Calculate the size of this object to be used by pack function
+     */
     const uint32_t get_pack_size() const {
       uint32_t size=0;
       size += sizeof(foe);
