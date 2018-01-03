@@ -1,6 +1,8 @@
+#pragma once
 #include <eoslib/datastream.hpp>
 #include <eoslib/raw.hpp>
 #include <eoslib/eos.hpp>
+#include <rps.hpp>
 
 namespace eosio {
 
@@ -71,11 +73,6 @@ namespace eosio {
       pack(ds, moves_val.reveal_turn);     
     }
     
-    template<typename Stream> inline void pack( Stream& ds, const rps::score& s) {
-      pack(ds, s.host);
-      pack(ds, s.foe);
-    }
-
     template<typename Stream> inline void pack( Stream& ds, const rps::game& g) {
       pack(ds, g.id);
       pack(ds, g.foe);
@@ -83,8 +80,11 @@ namespace eosio {
       pack(ds, g.host_moves);
       pack(ds, g.foe_moves);
       pack(ds, g.round);
-      pack(ds, g.winner);
-      pack(ds, g.game_score);
+      pack(ds, g.round_winner_len);
+      for (int i = 0; i < g.round_winner_len; i++) {
+        pack(ds, g.round_winner[i]);
+      }
+      pack(ds, g.game_winner);
       pack(ds, g.host_stake);
       pack(ds, g.foe_stake);
       pack(ds, g.created_time);
@@ -108,10 +108,7 @@ namespace eosio {
       unpack(ds, moves_val.reveal_turn);  
     }
 
-    template<typename Stream> inline void unpack( Stream& ds, rps::score& s) {
-      unpack(ds, s.host);
-      unpack(ds, s.foe);
-    }
+
     template<typename Stream> inline void unpack( Stream& ds, rps::game& g) {
       unpack(ds, g.id);
       unpack(ds, g.foe);
@@ -119,8 +116,11 @@ namespace eosio {
       unpack(ds, g.host_moves);
       unpack(ds, g.foe_moves);
       unpack(ds, g.round);
-      unpack(ds, g.winner);
-      unpack(ds, g.game_score);
+      unpack(ds, g.round_winner_len);
+      for (int i = 0; i < g.round_winner_len; i++) {
+        unpack(ds, g.round_winner[i]);
+      }
+      unpack(ds, g.game_winner);
       unpack(ds, g.host_stake);
       unpack(ds, g.foe_stake);
       unpack(ds, g.created_time);

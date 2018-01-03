@@ -3,34 +3,32 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #include <rps.hpp>
-#include <rps_fwd.hpp>
 #include <eoslib/crypto.h>
 #include <eoslib/memory.hpp>
 #include <eoslib/transaction.hpp>
+#include <rps_eos_ext.hpp>
 
 using namespace eosio;
 
-
 namespace rps {
-    void clear_table() {
-        // FOR DEVELOPMENT ONLY!!
-        uint32_t buffer_size = sizeof(uint64_t);
-        uint8_t game_id_buffer[buffer_size];
-        while (back_i64(contract_name, contract_name, N(games), game_id_buffer, buffer_size) != -1) {
-            remove_i64( contract_name, N(games), game_id_buffer);
-        }
-    }
-
+    /**
+     * Store game to database
+     */
     int32_t store_game(const game& g) {
         bytes b = value_to_bytes(g);
         return store_i64(contract_name, N(games), b.data, b.len);
     }
 
+    /**
+     * Update game object in database
+     */
      int32_t update_game(const game& g) {
         bytes b = value_to_bytes(g);
         return update_i64(N(rps), N(games), b.data, b.len);
     }
-
+    /**
+     * Load game from database
+     */
     int32_t load_game(game& g, const uint64_t game_id) {
         uint32_t max_buffer_size = 1000;
         uint8_t buffer[max_buffer_size];
@@ -46,70 +44,108 @@ namespace rps {
         return num_b_read;
     }
 
+    /**
+     * Get next game id
+     */
     uint64_t get_next_game_id() {
         uint32_t max_buffer_size = sizeof(uint64_t);
         uint8_t buffer[max_buffer_size];
         int32_t num_bytes_read = back_i64(contract_name, contract_name, N(games), buffer, max_buffer_size);
 
         if (num_bytes_read != -1) {
-            datastream<char *> ds((char *)buffer, max_buffer_size);
-            uint64_t prev_game_id;
-            raw::unpack(ds, prev_game_id);
-            return prev_game_id + 1;
+          datastream<char *> ds((char *)buffer, max_buffer_size);
+          uint64_t prev_game_id;
+          raw::unpack(ds, prev_game_id);
+          return prev_game_id + 1;
         } 
         return 0;
     }
 
-    score calculate_score(const string& host_move, const string& foe_move) {
-        score game_score;
-        if ((host_move == "rock" && foe_move == "scissor") || 
-            (host_move == "scissor" && foe_move == "paper")  || 
-            (host_move == "paper" && foe_move == "rock")) {
-            game_score.host++; 
-        } else if ((host_move == "rock" && foe_move == "paper") || 
-                    (host_move == "scissor" && foe_move == "rock")  || 
-                    (host_move == "paper" && foe_move == "scissor")) {
-                    game_score.foe++; 
+    /*
+     * Get winner of the game
+     */
+    account_name get_game_winner(const game& g) {
+        // Calculate score
+        uint8_t host_score = 0;
+        uint8_t foe_score = 0;
+        for (int i = 0; i < g.round; i++) {
+            if (g.round_winner[i] == g.host) {
+                host_score++;
+            } else if (g.round_winner[i] == g.foe) {
+                foe_score++;
+            }
         }
-        return game_score;
-    }
-
-    account_name get_winner(const game& g) {
-        if (g.game_score.host >= 2 ) {
+        // Determine winner
+        if (host_score >= 2 ) {
             return g.host;
-        } else if (g.game_score.foe >= 2) {
+        } else if (foe_score >= 2) {
             return g.foe;
-        } else if (g.round > 2 && g.game_score.host == g.game_score.foe) {
+        } else if (g.round > 2 && host_score == foe_score) {
             return N(draw);
         } else {
             return N(none);
         }
+
     }
 
-    void distribute_stake(const game& g) {
+    /*
+     * Get winner of a round
+     */
+    account_name get_round_winner(const game& g) {
+        const string& host_move = g.host_moves.moves_val[g.round];
+        const string& foe_move = g.foe_moves.moves_val[g.round];
+        if ((host_move == "rock" && foe_move == "scissor") || 
+            (host_move == "scissor" && foe_move == "paper")  || 
+            (host_move == "paper" && foe_move == "rock")) {
+            return g.host; 
+        } else if ((host_move == "rock" && foe_move == "paper") || 
+                    (host_move == "scissor" && foe_move == "rock")  || 
+                    (host_move == "paper" && foe_move == "scissor")) {
+            return g.foe;
+        } else {
+            return N(draw);
+        }
+    }
+
+    /**
+     * @brief Distribute stake
+     * 
+     * @param g 
+     */
+    void distribute_stake(game& g) {
         balance host_bal;
         Balance::get(host_bal, g.host);
         balance foe_bal;
         Balance::get(foe_bal, g.foe);
-        if (g.winner == N(draw)) {
+        if (g.game_winner == N(draw) || g.game_winner == N(none)) {
             // Draw, returns money back
             host_bal.locked_amount -= g.host_stake;
             host_bal.avail_amount += g.host_stake;
             foe_bal.locked_amount -= g.foe_stake;
             foe_bal.avail_amount += g.foe_stake;
-        } else if (g.winner == g.host) {
+        } else if (g.game_winner == g.host) {
             // Host win, gives all money to host
             host_bal.locked_amount -= g.host_stake;
             foe_bal.locked_amount -= g.foe_stake;
             host_bal.avail_amount += (g.host_stake + g.foe_stake);
-        } else if (g.winner == g.foe) {
+        } else if (g.game_winner == g.foe) {
             // Host win, gives all money to foe
             host_bal.locked_amount -= g.host_stake;
             foe_bal.locked_amount -= g.foe_stake;
             foe_bal.avail_amount += (g.host_stake + g.foe_stake);
         }
+        Balance::update(host_bal, g.host);
+        Balance::update(foe_bal, g.foe);
+        // Reduce stakes in game
+        g.host_stake = 0;
+        g.foe_stake = 0;
     }
 
+    /**
+     * @brief Apply create game action
+     * 
+     * @param c 
+     */
     void apply_create(const create& c) {
         require_auth(c.host);
         game g(get_next_game_id(), c.foe, c.host);
@@ -117,6 +153,11 @@ namespace rps {
         store_game(g);
     }
 
+    /**
+     * @brief Apply submit move action
+     * 
+     * @param s 
+     */
     void apply_submit(const submit& s) {
         require_auth(s.by);
 
@@ -140,8 +181,13 @@ namespace rps {
 
         // Update the data
         update_game(g);
-    }
+    }   
 
+    /**
+     * @brief Apply reveal move action
+     * 
+     * @param r 
+     */
     void apply_reveal(const reveal& r) {
         require_auth(r.by);
 
@@ -152,42 +198,49 @@ namespace rps {
 
         // Check if this game belongs to the message sender
         assert(r.by == g.host || r.by == g.foe, "this is not your game!");
-
+        // Check for valid move
         assert(r.move_val == "rock" || r.move_val == "paper" || r.move_val == "scissor", "invalid move!");
 
         bool is_by_host = r.by == g.host;
         moves* moves_pointer = is_by_host ? &g.host_moves : &g.foe_moves;
-
         assert(moves_pointer->submit_turn > moves_pointer->reveal_turn, "you haven't submitted a move!");
-
         assert(moves_pointer->reveal_turn == g.round, "you have revealed the move!");
 
         // reveal the move
         string move_and_nonce = r.move_val + r.nonce;
+        // Ensure it is the right move and nonce
         assert_sha256((char *)move_and_nonce.get_data(), move_and_nonce.get_size(), &moves_pointer->hashed_moves[g.round]);
-
         moves_pointer->moves_val[g.round] = r.move_val; 
         moves_pointer->nonces[g.round] = r.nonce; 
         moves_pointer->reveal_turn++;
 
-        // If both player has revealed, calculate the score of this round
+        // If both player has revealed, decide the winner of this round
         if (g.host_moves.reveal_turn > g.round && g.foe_moves.reveal_turn > g.round){
-            g.game_score += calculate_score(g.host_moves.moves_val[g.round], g.foe_moves.moves_val[g.round]);
+            g.round_winner[g.round] = get_round_winner(g);
+            // Increment the round
             g.round++;
         }
 
-        // Update winner
-        g.winner = get_winner(g);
+        // Update game winner
+        g.game_winner = get_game_winner(g);
+
+        bool is_winner_determined = g.game_winner != N(none);
+        if (is_winner_determined) {
+            // Distribute stake if the winner is determined
+            distribute_stake(g);
+            // Set is_active to 0
+            g.is_active = 0;
+        }
 
         // Update the game
         update_game(g);
-
-        // Distribute stake if the winner is determined
-        if (g.winner != N(none)) {
-            distribute_stake(g);
-        }
     }
 
+    /**
+     * @brief Apply stake action
+     * 
+     * @param s 
+     */
     void apply_stake(const stake& s) { 
         // Check authorization
         require_auth(s.by);
@@ -203,7 +256,6 @@ namespace rps {
         // Check if the account has enough balance
         balance bal;
         bool balance_exists = Balance::get(bal, s.by);
-        print("balance amount", bal.avail_amount, " ", s.amount, "\n");
         assert(balance_exists && bal.avail_amount >= s.amount, "not enough balance! deposit some money first!");
         bal.avail_amount -= s.amount;
         bal.locked_amount += s.amount;
@@ -221,10 +273,14 @@ namespace rps {
 
     }
 
+    /**
+     * @brief Message handler for native eos transfer
+     * 
+     * @param t 
+     */
     void apply_eos_transfer(const transfer& t) {
-        print("apply eos transfer");
         if (t.from == contract_name) {
-            // Prevent transfer to account that doesn't have enough balance
+            // Prevent transfer to account that doesn't have enough available money deposited to rps
             balance bal;
             bool balance_exists = Balance::get(bal, t.to);
             assert(balance_exists && bal.avail_amount >= t.amount, "not enough balance to withdraw!");
@@ -233,8 +289,7 @@ namespace rps {
             bal.avail_amount -= t.amount;
             Balance::update(bal, t.to);
         } else if (t.to == contract_name) {
-            print("eos transfer to rps");
-            // Update stake table
+            // When another account deposits money to this contract, note the amount of money he sends
             balance bal;
             bool balance_exists =  Balance::get(bal, t.from);
             bal.avail_amount += t.amount;
@@ -250,7 +305,7 @@ namespace rps {
 
     void apply_withdraw(const withdraw& w) {
         require_auth(w.by);
-        // Do the eos transfer
+        // Initiate eos transfer from this contract to the withdrawer
         transfer tx;
         tx.from = contract_name;
         tx.to = w.by;
@@ -263,7 +318,7 @@ namespace rps {
     void apply_cancel(const cancel& c) {
         require_auth(c.by);
 
-        // Initialize empty object with the key
+        // Check if game exists
         game g;
         bool game_exists = load_game(g, c.game_id) != -1;
         assert(game_exists == true, "game doesn't exist!");
@@ -271,30 +326,16 @@ namespace rps {
 
         // Check if this g belongs to the message sender
         assert(c.by == g.host || c.by == g.foe, "this is not your game!");
-        assert(now() - g.created_time > 5 * 60, "you can't cancel game that hasn't been active for at least a day");
-        
-        // Update balance record, return locked money
-        balance host_bal;
-        Balance::get(host_bal, g.host);
-        balance foe_bal;
-        Balance::get(foe_bal, g.foe);
-        host_bal.locked_amount -= g.host_stake;
-        host_bal.avail_amount += g.host_stake;
-        foe_bal.locked_amount -= g.foe_stake;
-        foe_bal.avail_amount += g.foe_stake;
+        assert(now() - g.created_time > 24 * 60 * 60, "you can't cancel game that hasn't been active for at least a day");
 
-        // Update game, release stake
-        g.host_stake = 0;
-        g.foe_stake = 0;
+        // Release stake
+        distribute_stake(g);
         // Set game to be inactive
         g.is_active = 0;
 
         update_game(g);
     }
-
 }
-
-using namespace rps;
 
 
 /**
@@ -307,28 +348,27 @@ extern "C" {
      *  This method is called once when the contract is published or updated.
      */
     void init()  {
-        clear_table();
     }
 
     /// The apply method implements the dispatch of events to this contract
     void apply( uint64_t code, uint64_t action_name ) {
-        if (code == contract_name) {
+        if (code == rps::contract_name) {
             if (action_name == N(create)) {
-                apply_create(current_message<create>());
+                rps::apply_create(current_message<rps::create>());
             } else if (action_name == N(submit)) {
-                apply_submit(current_message<submit>());
+                rps::apply_submit(current_message<rps::submit>());
             } else if (action_name == N(reveal)) {
-                apply_reveal(current_message<reveal>());
+                rps::apply_reveal(current_message<rps::reveal>());
             } else if (action_name == N(cancel)) {
-                apply_cancel(current_message<cancel>());
+                rps::apply_cancel(current_message<rps::cancel>());
             } else if (action_name == N(stake)) {
-                apply_stake(current_message<stake>());
+                rps::apply_stake(current_message<rps::stake>());
             } else if (action_name == N(withdraw)) {
-                apply_withdraw(current_message<withdraw>());
+                rps::apply_withdraw(current_message<rps::withdraw>());
             }
         } else if (code == N(eos)) {
             if (action_name == N(transfer)) {
-                apply_eos_transfer(current_message<transfer>());
+                rps::apply_eos_transfer(current_message<eosio::transfer>());
             }
         }
       

@@ -1,13 +1,6 @@
 {
   "types": [],
   "structs": [{
-      "name": "score",
-      "base": "",
-      "fields": {
-        "host": "uint8",
-        "foe": "uint8"
-      }
-    },{
       "name": "game",
       "base": "",
       "fields": {
@@ -17,8 +10,8 @@
         "host_moves": "moves",
         "foe_moves": "moves",
         "round": "uint8",
-        "winner": "account_name",
-        "game_score": "score",
+        "round_winner": "account_name[]",
+        "game_winner": "account_name",
         "host_stake": "uint64",
         "foe_stake": "uint64",
         "created_time": "time",
